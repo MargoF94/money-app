@@ -3,10 +3,11 @@
 import { defaultCategories, defaultSettings } from './constants';
 import * as db from './db';
 import { duePayments } from './bills';
+import { dueWithdrawals } from './card';
 import { balances } from './ledger';
 import { emptyCollections, mergeCollections } from './merge';
 import { COLLECTION_NAMES } from './types';
-import type { Account, BaseRecord, Bill, Category, CollectionName, Collections, Settings, Transaction } from './types';
+import type { Account, BaseRecord, Bill, Category, CollectionName, Collections, Settings, Statement, Transaction } from './types';
 import { collator, nowIso, today } from './util';
 
 type Listener = () => void;
@@ -38,6 +39,9 @@ class Store {
   balances = $derived(balances(this.data.accounts, this.data.transactions));
 
   bills = $derived(this.data.bills.filter((b) => !b.deleted).sort((a, b) => collator.compare(a.name, b.name)));
+
+  /** Card statements, oldest first. */
+  statements = $derived(this.data.statements.filter((x) => !x.deleted).sort((a, b) => a.billMonth.localeCompare(b.billMonth)));
 
   settings = $derived<Settings>(this.data.settings.find((s) => s.id === 'settings' && !s.deleted) ?? defaultSettings(SEED_TIME));
 
@@ -220,17 +224,40 @@ class Store {
     await this.remove('bills', [b]);
   }
 
-  /** Adds subscription and bill payments that are due by today (called on start, after sync, and when the app is reopened). */
+  /**
+   * Adds what is due by today and not recorded yet: subscription and bill payments, and card
+   * withdrawals from imported statements (called on start, after sync, and when the app is reopened).
+   */
   async addDuePayments(): Promise<number> {
     if (!this.loaded) return 0;
     const ids = new Set(this.data.transactions.map((t) => t.id));
-    // Payments before an account's starting date are already inside its opening balance.
-    const due = duePayments(this.data.bills, ids, today(), nowIso()).filter((t) => {
+    const now = nowIso();
+    // Anything before an account's starting date is already inside its opening balance.
+    const due = [
+      ...duePayments(this.data.bills, ids, today(), now),
+      ...dueWithdrawals(this.accounts, this.data.statements, ids, today(), now),
+    ].filter((t) => {
       const a = this.account(t.accountId);
       return a && t.date >= a.openingDate;
     });
     if (due.length) await this.put('transactions', due);
     return due.length;
+  }
+
+  /** Saves an imported statement (replacing the same month's) and fixes estimated dollar purchases. */
+  async saveStatement(st: Statement, fixes: { tx: Transaction; amount: number }[]): Promise<void> {
+    await this.put('statements', [st]);
+    if (fixes.length) {
+      await this.put(
+        'transactions',
+        fixes.map(({ tx, amount }) => ({ ...tx, amount, foreign: tx.foreign ? { ...tx.foreign, estimated: false } : undefined })),
+      );
+    }
+    await this.addDuePayments();
+  }
+
+  async deleteStatement(st: Statement): Promise<void> {
+    await this.remove('statements', [st]);
   }
 
   async saveSettings(patch: Partial<Settings>): Promise<void> {

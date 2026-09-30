@@ -81,6 +81,8 @@ export interface Transaction extends BaseRecord {
   /** Added automatically for a subscription or bill: which one, and for which due date. */
   billId?: string;
   billDate?: string;
+  /** Added automatically for a card statement's withdrawal. */
+  statementId?: string;
 }
 
 export type CategoryKind = 'expense' | 'income';
@@ -120,6 +122,32 @@ export interface Bill extends BaseRecord {
   note?: string;
 }
 
+/** One 分割払い (instalment) plan as it stands on a statement. */
+export interface InstalmentRow {
+  date: string; // purchase date
+  shop: string;
+  count: number; // number of payments
+  nth: number; // which payment this statement charges
+  purchase: number; // amount of the purchase
+  fee: number; // total fee of the plan
+  pay: number; // charged on this statement
+  carry: number; // still owed after this statement
+}
+
+/** A card statement (明細) as imported: what is withdrawn and the instalment plans on it. */
+export interface Statement extends BaseRecord {
+  accountId: string;
+  /** The month it is paid in (2026-09 = withdrawn in September, for August purchases). */
+  billMonth: string;
+  payDate: string; // YYYY-MM-DD
+  total: number; // withdrawn
+  once: number; // one-time payments (1回払い) on it
+  instalments: number; // instalment payments on it
+  other: number; // anything else (revolving, adjustments)
+  plans: InstalmentRow[];
+  fileName?: string;
+}
+
 export type Theme = 'system' | 'light' | 'dark';
 
 export interface Settings extends BaseRecord {
@@ -135,6 +163,7 @@ export interface MainCollections {
   tags: Tag[];
   settings: Settings[];
   bills: Bill[];
+  statements: Statement[];
 }
 
 export interface Collections extends MainCollections {
@@ -143,9 +172,9 @@ export interface Collections extends MainCollections {
 
 export type CollectionName = keyof Collections;
 
-export const MAIN_COLLECTIONS: (keyof MainCollections)[] = ['accounts', 'categories', 'tags', 'settings', 'bills'];
+export const MAIN_COLLECTIONS: (keyof MainCollections)[] = ['accounts', 'categories', 'tags', 'settings', 'bills', 'statements'];
 export const COLLECTION_NAMES: CollectionName[] = [...MAIN_COLLECTIONS, 'transactions'];
 
-/** Bumped when a collection is added, so older app versions refuse newer data instead of dropping it. 2 added `bills`. */
-export const SCHEMA = 2;
+/** Bumped when a collection is added, so older app versions refuse newer data instead of dropping it. 2 added `bills`, 3 `statements`. */
+export const SCHEMA = 3;
 export const APP_ID = 'money-log';

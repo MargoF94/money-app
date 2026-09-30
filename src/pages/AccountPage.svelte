@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CardPanel from '../components/CardPanel.svelte';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
   import TxRow from '../components/TxRow.svelte';
@@ -80,6 +81,8 @@
     <button type="button" class="btn" onclick={() => (checking = true)}><Icon name="scale" size={18} />Check the balance</button>
   </div>
 
+  {#if account.type === 'card'}<div class="stack card-panel"><CardPanel card={account} /></div>{/if}
+
   <div class="sec-head"><h2>Transactions</h2><span class="small muted">{txs.length}</span></div>
   {#if txs.length === 0}
     <p class="muted">Nothing yet.</p>
@@ -139,6 +142,10 @@
 
   .sec-head {
     margin-bottom: 0.5rem;
+  }
+
+.card-panel {
+    margin-bottom: 1.5rem;
   }
 
   .ok {

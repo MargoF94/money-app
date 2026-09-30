@@ -30,6 +30,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         navigateFallback: 'index.html',
         importScripts: ['sw-notify.js'],
+        // The PDF reader (for 明細) is fetched the first time a statement is opened, then kept for offline use.
+        globIgnores: ['**/pdf.worker*', '**/pdf-*.js'],
+        runtimeCaching: [{ urlPattern: /(pdf\.worker|pdf-).*\.m?js$|\.bcmap$/, handler: 'CacheFirst', options: { cacheName: 'pdf' } }],
       },
     }),
   ],
