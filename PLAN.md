@@ -23,7 +23,7 @@ Mockups (private link): https://claude.ai/artifact/MehUA9LXFQ5fHg4F5HenEZ
 | Totals | In yen |
 | Exchange rates | Frankfurter (European Central Bank), jsDelivr fallback — Reading Log's `fx.ts`. Saved on each transaction, editable. |
 | Reminders | `.ics` calendar files with alarms (work when the app is closed), plus notices in the app |
-| Input | **Manual entry**, optionally filled in from a **receipt photo**. The only import is the **Rakuten Card 明細 CSV**, used to track 分割払い and the monthly withdrawals — no bank history. |
+| Input | **Manual entry**, optionally filled in from a **receipt photo**. The only import is the **Rakuten Card 明細 (PDF or CSV)**, used to track 分割払い and the monthly withdrawals — no bank history. |
 | Layout | Phone first. Six tabs: **Home · Activity · Add · Accounts · Plan · Stats**; Settings is the ⚙ in the top bar; sidebar on screens ≥ 900 px |
 | Look | Reading Log's ink/slate palette and its own dark mode; chart colours checked for colour-blindness in both themes |
 | Privacy | Private data repo; token limited to that repo; token kept only on the device; warning if the repo is public; bank files are never committed anywhere |
@@ -75,6 +75,7 @@ Every record has `id`, `createdAt`, `updatedAt` and optional `deleted`.
 - **Bill:** name, amount (fixed, or "about" for utilities), currency, account, category, payee,
   repeat rule, start/end, weekend/holiday rule, reminder, kind (bill · subscription · income, e.g. payday).
 - **Goal:** name, target amount and currency, optional date, linked account(s) or amounts added by hand.
+- **Loan (money lent):** person, amount lent, repayments (optional plan such as ¥X a month).
 - **Rule:** "description contains …" → payee name, category, tags. Offered when you correct an import.
 - **Settings:** theme, display currency, budget month start, default account, reminders.
 
@@ -133,6 +134,17 @@ Interest & dividends, Gifts, Other income.
 - Over budget is shown with an icon and the amount in words, never by colour alone.
 - Optional roll-over of unspent amounts (off by default).
 
+## 7b. Payday month (from your spreadsheet)
+
+The Budget tab starts from the salary paid on the last business day of the month before (a Friday
+if the month ends on a weekend) and lists what goes out that month: rent, the Rakuten withdrawal
+(estimated until the 明細 arrives), Paidy, cash, set-asides such as a tattoo fund. What's left is
+the amount to save. Optional payslip breakdown (base, overtime, allowances, commute, taxes).
+
+- **Savings** can be split between accounts and cash kept at home.
+- **Money lent** to friends is its own kind of account: repayments reduce it, and a
+  "everything together" total counts savings plus money still owed to you, like the sheet's REAL TOTAL.
+
 ## 8. Bills, subscriptions and reminders
 
 - Repeats: every month on a day (or the last day), every N months (water every 2 months), yearly,
@@ -178,15 +190,21 @@ Interest & dividends, Gifts, Other income.
 
 ## 11. Import and export
 
-- **Rakuten Card 明細 CSV only.** Detects Shift_JIS or UTF-8; reads the date, shop, amount, payment
-  method (1回 / 分割 / リボ), fee and the amount charged this month, so the instalment schedule and the
-  next withdrawals are exact. Rows you already entered by hand are matched (same amount, date within a
-  few days) instead of added twice; dollar purchases get their real yen amount. The exact columns will
-  be checked against your own export (kept only on this computer, never committed).
-- No bank (三井住友 / MUFG) history import: those accounts are kept up to date by hand and with
-  "Check a balance".
+- **Rakuten Card 明細, PDF or CSV.** The PDF from e-NAVI is read in the browser (pdf.js, loaded only
+  when needed); CSV works too. Each row gives the date, shop, payment method (`1回払い`,
+  `分割変更N回払い(k回目)`, リボ), purchase amount, fee, this month's payment and the balance carried
+  to next month. Checked against four real statements (kept only in the work session, never committed):
+  every row was read and the totals match.
+- **Late 分割 changes:** a purchase switched to 分割 after the statement closed still shows as
+  `1回払い` on that statement, but isn't in its total; it appears as instalment 1 on the next one.
+  The app matches these so nothing is counted twice and the month's total matches the bill.
+- From the plans on the latest statement the app works out **what is already committed** for each
+  coming month (and when each plan ends), plus the fees.
+- Rows you entered by hand are matched (same amount, date within a few days) instead of added twice;
+  dollar purchases get their real yen amount. Half-width katakana is normalised (`ﾛｰｿﾝ` → `ローソン`)
+  before payee rules are matched.
+- No bank (三井住友 / MUFG) history import: kept up to date by hand and with "Check a balance".
 - Export: JSON backup, CSV of transactions, `.ics` of bills.
-- Half-width katakana in the 明細 is normalised (`ﾛｰｿﾝ` → `ローソン`) before payee rules are matched.
 
 ## 12. Not possible / limits
 
@@ -228,13 +246,13 @@ Answered:
 - Past history: only the Rakuten 明細.
 
 Still open:
-7. Name "Money Log", the six tabs and the default categories — OK? (Your current spreadsheet would
-   show which categories you really use.)
-8. Receipt reading: on the phone only (free, private, weaker), or through an AI service with your
-   own API key (accurate, ~¥1–3 a receipt, the photo is sent out)? Or just keep the photo and type the total?
-9. Which card is in Apple Pay for dollar purchases — Rakuten Card? Any other cards or payment apps
-   (PayPay, Suica…) besides PASMO and Starbucks?
-10. Do you have any dollar accounts or dollar cash, or is everything in yen?
+7. Name "Money Log", the six tabs and the default categories — OK?
+8. Receipt reading: on the phone only (free, private, weaker), through an AI service with your own
+   API key (accurate, ~¥1–3 a receipt, the photo is sent out), or photo only?
+9. Which card is in Apple Pay for dollar purchases — Rakuten Card? Other payment apps besides PASMO
+   and Starbucks?
+10. Paidy: a fixed monthly amount, or should its purchases and instalments be tracked like Rakuten Card?
+11. "ケース" in the sheet: cash kept at home?
 
 ## 15. Setup (when phase 1 is ready)
 
