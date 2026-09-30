@@ -17,6 +17,15 @@
       rrule: billRule(b),
     }));
     for (const card of store.openAccounts.filter((a) => a.type === 'card')) {
+      // Statements already read but not withdrawn yet have the exact amount.
+      for (const st of store.statements.filter((x) => x.accountId === card.id && x.payDate >= today())) {
+        events.push({
+          uid: `card-${card.id}-${st.billMonth}`,
+          date: st.payDate,
+          title: `${card.name} withdrawal: ${formatMoney(st.total, 'JPY')}`,
+          note: `From ${store.account(card.paysFromId)?.name ?? 'your bank'} (Money Log).`,
+        });
+      }
       const next = nextBill(card, store.statements, store.data.transactions, today());
       events.push({
         uid: `card-${card.id}-${next.billMonth}`,

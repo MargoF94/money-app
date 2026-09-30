@@ -1,6 +1,6 @@
 <script lang="ts">
   import { committed, matchEstimates, nextBill, toStatement } from '../lib/card';
-  import { parseRakuten, remainingPayments, type ParsedStatement } from '../lib/import/rakuten';
+  import { decodeCsv, parseRakuten, parseRakutenCsv, remainingPayments, type ParsedStatement } from '../lib/import/rakuten';
   import { formatMoney } from '../lib/money';
   import { store } from '../lib/store.svelte';
   import { toasts } from '../lib/toast.svelte';
@@ -14,6 +14,8 @@
 
   const mine = $derived(store.statements.filter((s) => s.accountId === card.id));
   const latest = $derived(mine.at(-1));
+  // Statements already read but not withdrawn yet: the exact amount is known.
+  const upcoming = $derived(mine.filter((s) => s.payDate >= today()));
   const next = $derived(nextBill(card, store.statements, store.data.transactions, today()));
   const schedule = $derived([...committed(latest)]);
   const maxMonth = $derived(Math.max(1, ...schedule.map(([, v]) => v.total)));
@@ -47,14 +49,14 @@
     parsed = null;
     try {
       const buffer = await file.arrayBuffer();
-      let rows: string[][];
       if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
         const { pdfRows } = await import('../lib/import/pdfText');
-        rows = await pdfRows(buffer);
+        parsed = parseRakuten(await pdfRows(buffer));
+      } else if (/\.csv$/i.test(file.name) || file.type === 'text/csv') {
+        parsed = parseRakutenCsv(decodeCsv(buffer));
       } else {
-        throw new Error('Choose the statement PDF from e-NAVI (ご利用代金請求明細書).');
+        throw new Error('Choose the statement PDF (ご利用代金請求明細書) or the ご利用明細 CSV from e-NAVI.');
       }
-      parsed = parseRakuten(rows);
       fileName = file.name;
       fixes = matchEstimates(parsed, card.id, store.data.transactions);
     } catch (err) {
@@ -82,8 +84,21 @@
   }
 </script>
 
+{#each upcoming as s (s.id)}
+  <section class="card stack">
+    <div class="row between"><h2>{formatMonth(s.billMonth)} withdrawal</h2><span class="chip tiny">{formatDate(s.payDate)}</span></div>
+    <span class="big num">{formatMoney(s.total, 'JPY')}</span>
+    <div class="rows small">
+      <div class="row between"><span class="muted">1回払い</span><span class="num">{formatMoney(s.once, 'JPY')}</span></div>
+      <div class="row between"><span class="muted">分割払い ({plural(s.plans.length, 'plan')})</span><span class="num">{formatMoney(s.instalments, 'JPY')}</span></div>
+      {#if s.other}<div class="row between"><span class="muted">Other</span><span class="num">{formatMoney(s.other, 'JPY')}</span></div>{/if}
+    </div>
+    <p class="xs muted m0">Exact, from {s.fileName ?? 'the 明細'}. Recorded on its day{card.paysFromId ? ` from ${store.account(card.paysFromId)?.name}` : ''}.</p>
+  </section>
+{/each}
+
 <section class="card stack">
-  <div class="row between"><h2>Next withdrawal</h2><span class="chip tiny">{formatDate(next.payDate)}</span></div>
+  <div class="row between"><h2>{upcoming.length ? 'After that' : 'Next withdrawal'}</h2><span class="chip tiny">{formatDate(next.payDate)}</span></div>
   <span class="big num">{formatMoney(next.total, 'JPY')}</span>
   <div class="rows small">
     <div class="row between"><span class="muted">Purchases in {formatMonth(addMonths(next.billMonth, -1))}</span><span class="num">{formatMoney(next.once, 'JPY')}</span></div>
@@ -148,11 +163,11 @@
   <div class="row between">
     <h2>Statements (明細)</h2>
     <button type="button" class="btn small" disabled={reading} onclick={() => fileInput?.click()}><Icon name="upload" size={16} />{reading ? 'Reading…' : 'Add a 明細'}</button>
-    <input bind:this={fileInput} type="file" accept="application/pdf,.pdf" hidden onchange={pick} />
+    <input bind:this={fileInput} type="file" accept="application/pdf,.pdf,text/csv,.csv" hidden onchange={pick} />
   </div>
   {#if readError}<p class="error small" role="alert">{readError}</p>{/if}
   {#if mine.length === 0}
-    <p class="small muted m0">In e-NAVI: ご利用明細 → the month → PDF (ご利用代金請求明細書). Add it here to see your exact 分割払い and have the withdrawal recorded.</p>
+    <p class="small muted m0">In e-NAVI: ご利用明細 → the month → PDF (ご利用代金請求明細書), or CSV for a month that isn't closed yet. Add it here to see your exact 分割払い and have the withdrawal recorded.</p>
   {:else}
     <ul class="plans">
       {#each [...mine].reverse() as s (s.id)}
@@ -184,6 +199,7 @@
       {:else if preview.payDate < card.openingDate}
         <p class="small muted m0">Withdrawn before {card.name}'s starting date, so it isn't recorded again; the instalments still count.</p>
       {/if}
+      {#if /\.csv$/i.test(fileName) && preview.payDate > today()}<p class="small muted m0">The bill can still change until e-NAVI closes the month. Adding the PDF later replaces this.</p>{/if}
       <p class="xs muted m0">Only the totals and the 分割 plans are kept, not every purchase, and not the file.</p>
     </div>
   {/if}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { committed, dueWithdrawals, matchEstimates, nextBill, payDateFor, toStatement } from '../src/lib/card';
-import { parseRakuten, remainingPayments } from '../src/lib/import/rakuten';
+import { decodeCsv, parseRakuten, parseRakutenCsv, remainingPayments } from '../src/lib/import/rakuten';
 import type { Account, Transaction } from '../src/lib/types';
 
 // Synthetic rows shaped like a Rakuten statement read by pdfText.ts (no real data).
@@ -93,5 +93,46 @@ describe('Rakuten statement', () => {
     };
     expect(matchEstimates(parsed, 'card', [est])).toEqual([{ tx: est, amount: 1524 }]);
     expect(matchEstimates(parsed, 'card', [{ ...est, date: '2026-08-01' }])).toEqual([]);
+  });
+});
+
+describe('Rakuten e-NAVI CSV', () => {
+  // Synthetic file shaped like the ご利用明細 CSV (no real data).
+  const csv = [
+    '﻿"利用日","利用店名・商品名","利用者","支払方法","利用金額","手数料/利息","支払総額","支払月","10月支払金額","当月請求額","11月繰越残高","11月以降請求額"',
+    '"2026/09/20","ＶＩＳＡ国内利用　VS ﾃｽﾄｼﾖﾂﾌﾟ","本人","1回払い","1500","0","1500","10月","1500","1500","0",""',
+    '"2026/09/18","ＪＣＢ国内利用　QP  ｶﾌｪ, ﾃｽﾄ","本人","1回払い","800","0","800","10月","800","800","0",""',
+    '"2026/09/10","返済方法変更ＷＥＢ　100001SHOP A","本人","分割変更3回払い(1回目)","9000","300","9300","10月","3100","3100","6200",""',
+    '"","購入金額：\\9000 / 分割変更金額：\\9000","","","","","","","","","",""',
+    '"2026/09/10","返済方法変更ＷＥＢ　100001SHOP A","本人","分割変更3回払い(2回目以降)","-","300","9300","11月以降","","","","6200"',
+    '"","購入金額：\\9000 / 分割変更金額：\\9000","","","","","","","","","",""',
+    '"2026/07/02","返済方法変更ＷＥＢ　100000SHOP B","本人","分割変更6回払い(3回目)","-","600","12600","10月","2100","2100","6300",""',
+    '"","購入金額：\\12000 / 分割変更金額：\\12000","","","","","","","","","",""',
+  ].join('\r\n');
+  const enc = new TextEncoder().encode(csv);
+  const p = parseRakutenCsv(decodeCsv(enc.buffer as ArrayBuffer));
+
+  it('reads the bill month, the pay day and only the rows of this bill', () => {
+    expect([p.billMonth, p.payDate, p.total]).toEqual(['2026-10', '2026-10-27', 7500]);
+    expect(p.lines.map((l) => [l.kind, l.shop, l.count, l.nth, l.purchase, l.carry])).toEqual([
+      ['once', 'ﾃｽﾄｼﾖﾂﾌﾟ'.normalize('NFKC'), undefined, undefined, undefined, 0],
+      ['once', 'ｶﾌｪ, ﾃｽﾄ'.normalize('NFKC'), undefined, undefined, undefined, 0],
+      ['instalment', 'SHOP A', 3, 1, 9000, 6200],
+      ['instalment', 'SHOP B', 6, 3, 12000, 6300],
+    ]);
+  });
+
+  it('gives the exact months still to pay', () => {
+    const s = toStatement(p, 'card', 'now', 'x.csv');
+    expect([s.once, s.instalments]).toEqual([2300, 5200]);
+    expect([...committed(s)].map(([m, v]) => [m, v.total])).toEqual([
+      ['2026-11', 3100 + 2100],
+      ['2026-12', 3100 + 2100],
+      ['2027-01', 2100],
+    ]);
+  });
+
+  it('refuses other files', () => {
+    expect(() => parseRakutenCsv('a,b\n1,2')).toThrow(/e-NAVI/);
   });
 });

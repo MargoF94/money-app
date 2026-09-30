@@ -3,7 +3,7 @@
 import { defaultCategories, defaultSettings } from './constants';
 import * as db from './db';
 import { duePayments } from './bills';
-import { dueWithdrawals } from './card';
+import { dueWithdrawals, withdrawalId } from './card';
 import { balances } from './ledger';
 import { emptyCollections, mergeCollections } from './merge';
 import { COLLECTION_NAMES } from './types';
@@ -250,6 +250,9 @@ class Store {
   /** Saves an imported statement (replacing the same month's) and fixes estimated dollar purchases. */
   async saveStatement(st: Statement, fixes: { tx: Transaction; amount: number }[]): Promise<void> {
     await this.put('statements', [st]);
+    // A statement read again (e.g. the PDF after the CSV) corrects a withdrawal already recorded.
+    const paid = this.data.transactions.find((t) => t.id === withdrawalId(st.id) && !t.deleted);
+    if (paid && paid.amount !== st.total) await this.put('transactions', [{ ...paid, amount: st.total }]);
     if (fixes.length) {
       await this.put(
         'transactions',
