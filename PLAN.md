@@ -198,8 +198,12 @@ the amount to save. Optional payslip breakdown (base, overtime, allowances, comm
 - **Late 分割 changes:** a purchase switched to 分割 after the statement closed still shows as
   `1回払い` on that statement, but isn't in its total; it appears as instalment 1 on the next one.
   The app matches these so nothing is counted twice and the month's total matches the bill.
-- From the plans on the latest statement the app works out **what is already committed** for each
-  coming month (and when each plan ends), plus the fees.
+- From the plans on the latest statement the app works out **exactly how much 分割払い will be
+  charged in each coming month**, plan by plan, and when each plan ends. Rakuten puts any rounding in
+  the first instalment and charges the same amount every month after that, so the remaining payments
+  are the carried-over balance (翌月繰越残高) divided evenly by the payments left; fees are already
+  included. Checked against the real statements: every plan follows this rule. Purchases switched to
+  分割 later are added when they appear on the next 明細.
 - Rows you entered by hand are matched (same amount, date within a few days) instead of added twice;
   dollar purchases get their real yen amount. Half-width katakana is normalised (`ﾛｰｿﾝ` → `ローソン`)
   before payee rules are matched.
@@ -245,14 +249,13 @@ Answered:
 - No encryption: the private repo plus a token limited to it is enough.
 - Past history: only the Rakuten 明細.
 
-Still open:
-7. Name "Money Log", the six tabs and the default categories — OK?
-8. Receipt reading: on the phone only (free, private, weaker), through an AI service with your own
-   API key (accurate, ~¥1–3 a receipt, the photo is sent out), or photo only?
-9. Which card is in Apple Pay for dollar purchases — Rakuten Card? Other payment apps besides PASMO
-   and Starbucks?
-10. Paidy: a fixed monthly amount, or should its purchases and instalments be tracked like Rakuten Card?
-11. "ケース" in the sheet: cash kept at home?
+- Name "Money Log", the six tabs and the default categories: OK.
+- Receipts are read **on the phone** (text recognition in the browser, no data sent out); the form is
+  filled in with what it finds and you correct the rest.
+- Rakuten Card is in Apple Pay (PASMO and Starbucks top-ups, dollar purchases). PayPay and Paidy are
+  paid from the 三井住友 debit card.
+- Paidy: tracked as a bill from 三井住友; its last payment is on 27 Oct.
+- "ケース" in the sheet is cash kept at home: an account of type cash.
 
 ## 15. Setup (when phase 1 is ready)
 
