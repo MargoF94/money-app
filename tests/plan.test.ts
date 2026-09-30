@@ -92,3 +92,17 @@ describe('goals sharing an account', () => {
     expect([own.saved, own.target]).toEqual([20000, 100000]);
   });
 });
+
+describe('goal priority', () => {
+  const g = (id: string, extra = {}) => ({ id, createdAt: id, updatedAt: '', name: id, target: 100, accountId: 'mufg', ...extra });
+  it('fills goals in the order you set, before dates', async () => {
+    const { goalGroups, moveGoal, orderGoals } = await import('../src/lib/plan');
+    const goals = [g('a', { by: '2026-10' }), g('b', { by: '2027-01' }), g('c')];
+    expect(orderGoals(goals).map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    const changed = moveGoal(goals, goals[2], -1); // c up one
+    const next = goals.map((x) => changed.find((c) => c.id === x.id) ?? x);
+    expect(orderGoals(next).map((x) => x.id)).toEqual(['a', 'c', 'b']);
+    expect(moveGoal(next, next[0], -1)).toEqual([]); // already first
+    expect(goalGroups(next, () => 150, '2026-09-30')[0].goals.map((x) => [x.goal.id, x.progress.saved])).toEqual([['a', 100], ['c', 50], ['b', 0]]);
+  });
+});

@@ -162,6 +162,8 @@ export interface Goal extends BaseRecord {
   saved?: number; // when not linked to an account
   by?: string; // YYYY-MM target month
   done?: boolean;
+  /** Order among goals saved in the same account: the balance fills lower numbers first. */
+  priority?: number;
 }
 
 export type Theme = 'system' | 'light' | 'dark';

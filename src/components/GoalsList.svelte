@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatMoney, parseAmount, toInput } from '../lib/money';
-  import { goalGroups } from '../lib/plan';
+  import { goalGroups, moveGoal } from '../lib/plan';
   import { store } from '../lib/store.svelte';
   import type { Goal } from '../lib/types';
   import { formatMonth, newId, nowIso, today } from '../lib/util';
@@ -9,6 +9,11 @@
 
   const groups = $derived(goalGroups(store.goals, (id) => store.balance(id), today()));
   const reached = $derived(store.goals.filter((g) => g.done));
+
+  async function move(g: Goal, dir: -1 | 1) {
+    const changed = moveGoal(store.goals, g, dir);
+    if (changed.length) await store.put('goals', changed);
+  }
 
   let editing = $state<Goal | null>(null);
   let name = $state('');
@@ -70,9 +75,10 @@
           </span>
         </div>
         <div class="divider"></div>
-        <p class="xs muted m0">The balance fills the goal with the earliest date first.</p>
+        <p class="xs muted m0">The balance fills these goals from the top. Use the arrows to change the order.</p>
       {/if}
-      {#each grp.goals as { goal: g, progress: p } (g.id)}
+      {#each grp.goals as { goal: g, progress: p }, i (g.id)}
+        <div class="goal-row">
         <button type="button" class="goal" class:sub={!!grp.accountId} onclick={() => open(g)}>
           <span class="row between"><span class="row" class:strong={!grp.accountId}>{#if !grp.accountId}<Icon name="target" size={18} />{/if}{g.name}</span><span class="num">{Math.round(p.pct)}%</span></span>
           <span class="track" class:thin={!!grp.accountId}><span class="fill" style:width="{p.pct}%"></span></span>
@@ -82,6 +88,13 @@
           </span>
           {#if p.perMonth && p.saved < g.target}<span class="xs muted">Save {formatMoney(p.perMonth, 'JPY')} a month to get there</span>{/if}
         </button>
+        {#if grp.goals.length > 1}
+          <span class="arrows">
+            <button type="button" class="btn ghost icon" aria-label="Move {g.name} up" disabled={i === 0} onclick={() => move(g, -1)}><Icon name="up" size={18} /></button>
+            <button type="button" class="btn ghost icon" aria-label="Move {g.name} down" disabled={i === grp.goals.length - 1} onclick={() => move(g, 1)}><Icon name="chevron" size={18} /></button>
+          </span>
+        {/if}
+        </div>
       {/each}
     </section>
   {/each}
@@ -158,6 +171,27 @@
 
   .m0 {
     margin: 0;
+  }
+
+  .goal-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .goal-row .goal {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .arrows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .arrows .btn {
+    min-height: 36px;
+    width: 40px;
   }
 
   .goal.sub {

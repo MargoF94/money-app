@@ -152,9 +152,32 @@ export interface GoalGroup {
 }
 
 /**
+ * The order in which goals in one account are filled: the priority you set (arrows on the Goals
+ * page), then the earliest target date, goals without a date last.
+ */
+export function orderGoals(list: Goal[]): Goal[] {
+  return [...list].sort(
+    (a, b) =>
+      (a.priority ?? Infinity) - (b.priority ?? Infinity) ||
+      (a.by ?? '9999-99').localeCompare(b.by ?? '9999-99') ||
+      a.createdAt.localeCompare(b.createdAt),
+  );
+}
+
+/** Moves a goal one place up or down among goals in the same account; returns every goal whose priority changes. */
+export function moveGoal(goals: Goal[], goal: Goal, dir: -1 | 1): Goal[] {
+  const list = orderGoals(goals.filter((g) => !g.deleted && !g.done && g.accountId && g.accountId === goal.accountId));
+  const i = list.findIndex((g) => g.id === goal.id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return [];
+  [list[i], list[j]] = [list[j], list[i]];
+  return list.map((g, k) => ({ ...g, priority: k })).filter((g, k) => goals.find((x) => x.id === g.id)?.priority !== k);
+}
+
+/**
  * Goals saved in the same account share its balance: the group compares the balance with all
- * their targets added up, and each goal gets a share, earliest target date first (goals without
- * a date last). Reached goals are left out, so their money isn't counted again.
+ * their targets added up, and each goal gets a share in order (see orderGoals).
+ * Reached goals are left out, so their money isn't counted again.
  */
 export function goalGroups(goals: Goal[], balanceOf: (accountId: string) => number, today: string): GoalGroup[] {
   const open = goals.filter((g) => !g.deleted && !g.done);
@@ -169,7 +192,7 @@ export function goalGroups(goals: Goal[], balanceOf: (accountId: string) => numb
   for (const [accountId, list] of byAccount) {
     const balance = balanceOf(accountId);
     const target = list.reduce((s, g) => s + g.target, 0);
-    const ordered = [...list].sort((a, b) => (a.by ?? '9999-99').localeCompare(b.by ?? '9999-99') || a.createdAt.localeCompare(b.createdAt));
+    const ordered = orderGoals(list);
     let left = Math.max(0, balance);
     const items = ordered.map((g, i) => {
       // The last goal also gets anything beyond the targets, so the shares add up to the balance.
