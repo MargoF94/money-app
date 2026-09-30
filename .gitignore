@@ -1,0 +1,16 @@
+node_modules
+dist
+dev-dist
+*.local
+.DS_Store
+tests/_local*
+
+# Never commit bank or card exports, statements or receipts.
+# Synthetic test files go in tests/fixtures/ and are allowed.
+*.csv
+*.CSV
+*.pdf
+*.PDF
+*.ofx
+*.qfx
+!tests/fixtures/**
