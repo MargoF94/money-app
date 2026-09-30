@@ -1,11 +1,14 @@
 <script lang="ts">
   import { formatMoney, parseAmount, toInput } from '../lib/money';
-  import { goalProgress } from '../lib/plan';
+  import { goalGroups } from '../lib/plan';
   import { store } from '../lib/store.svelte';
   import type { Goal } from '../lib/types';
   import { formatMonth, newId, nowIso, today } from '../lib/util';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
+
+  const groups = $derived(goalGroups(store.goals, (id) => store.balance(id), today()));
+  const reached = $derived(store.goals.filter((g) => g.done));
 
   let editing = $state<Goal | null>(null);
   let name = $state('');
@@ -54,20 +57,44 @@
     <button type="button" class="btn primary" onclick={() => open()}>Add a goal</button>
   </div>
 {:else}
-  <section class="card stack goals">
-    {#each store.goals as g (g.id)}
-      {@const p = goalProgress(g, g.accountId ? store.balance(g.accountId) : undefined, today())}
-      <button type="button" class="goal" class:done={g.done} onclick={() => open(g)}>
-        <span class="row between"><span class="row strong"><Icon name={g.done ? 'checkCircle' : 'target'} size={18} />{g.name}</span><span class="num strong">{Math.round(p.pct)}%</span></span>
-        <span class="track"><span class="fill" style:width="{p.pct}%"></span></span>
-        <span class="row between xs muted">
-          <span class="num"><strong class="txt">{formatMoney(p.saved, 'JPY')}</strong> of {formatMoney(g.target, 'JPY')}</span>
-          <span>{g.accountId ? `in ${store.account(g.accountId)?.name ?? '?'}` : ''}{g.by ? ` · by ${formatMonth(g.by)}` : ''}</span>
-        </span>
-        {#if !g.done && p.perMonth && p.saved < g.target}<span class="xs muted">Save {formatMoney(p.perMonth, 'JPY')} a month to get there</span>{/if}
-      </button>
-    {/each}
-  </section>
+  {#each groups as grp (grp.accountId ?? grp.goals[0].goal.id)}
+    <section class="card stack goals">
+      {#if grp.accountId}
+        <!-- Goals saved in the same account share its balance. -->
+        <div class="stack-s">
+          <span class="row between"><span class="row strong"><Icon name="safe" size={18} />{store.account(grp.accountId)?.name ?? '?'}</span><span class="num strong">{Math.round(grp.pct)}%</span></span>
+          <span class="track"><span class="fill" style:width="{grp.pct}%"></span></span>
+          <span class="row between xs muted">
+            <span class="num"><strong class="txt">{formatMoney(grp.saved, 'JPY')}</strong> of {formatMoney(grp.target, 'JPY')}</span>
+            <span>{grp.goals.length} goals together</span>
+          </span>
+        </div>
+        <div class="divider"></div>
+        <p class="xs muted m0">The balance fills the goal with the earliest date first.</p>
+      {/if}
+      {#each grp.goals as { goal: g, progress: p } (g.id)}
+        <button type="button" class="goal" class:sub={!!grp.accountId} onclick={() => open(g)}>
+          <span class="row between"><span class="row" class:strong={!grp.accountId}>{#if !grp.accountId}<Icon name="target" size={18} />{/if}{g.name}</span><span class="num">{Math.round(p.pct)}%</span></span>
+          <span class="track" class:thin={!!grp.accountId}><span class="fill" style:width="{p.pct}%"></span></span>
+          <span class="row between xs muted">
+            <span class="num"><strong class="txt">{formatMoney(p.saved, 'JPY')}</strong> of {formatMoney(g.target, 'JPY')}</span>
+            <span>{g.by ? `by ${formatMonth(g.by)}` : ''}</span>
+          </span>
+          {#if p.perMonth && p.saved < g.target}<span class="xs muted">Save {formatMoney(p.perMonth, 'JPY')} a month to get there</span>{/if}
+        </button>
+      {/each}
+    </section>
+  {/each}
+  {#if reached.length}
+    <section class="card stack goals">
+      <h3 class="m0">Reached</h3>
+      {#each reached as g (g.id)}
+        <button type="button" class="goal done" onclick={() => open(g)}>
+          <span class="row between"><span class="row"><Icon name="checkCircle" size={18} />{g.name}</span><span class="num">{formatMoney(g.target, 'JPY')}</span></span>
+        </button>
+      {/each}
+    </section>
+  {/if}
 {/if}
 
 <Modal open={!!editing} title={editing && store.goals.some((g) => g.id === editing?.id) ? 'Edit goal' : 'New goal'} onclose={() => (editing = null)}>
@@ -117,6 +144,29 @@
 
   .goal.done {
     opacity: 0.65;
+  }
+
+  .goals + .goals {
+    margin-top: 1rem;
+  }
+
+  .stack-s {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .m0 {
+    margin: 0;
+  }
+
+  .goal.sub {
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+  }
+
+  .track.thin {
+    height: 6px;
   }
 
   .txt {

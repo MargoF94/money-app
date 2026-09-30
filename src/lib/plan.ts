@@ -142,3 +142,42 @@ export function goalProgress(g: Goal, balance: number | undefined, today: string
   const rest = Math.max(0, g.target - saved);
   return { saved, pct, monthsLeft, perMonth: monthsLeft > 0 ? Math.ceil(rest / monthsLeft) : rest };
 }
+
+export interface GoalGroup {
+  accountId?: string; // undefined: a goal you record yourself (a group of one)
+  goals: { goal: Goal; progress: GoalProgress }[];
+  target: number; // the targets added up
+  saved: number; // the account's balance (or the amount recorded)
+  pct: number;
+}
+
+/**
+ * Goals saved in the same account share its balance: the group compares the balance with all
+ * their targets added up, and each goal gets a share, earliest target date first (goals without
+ * a date last). Reached goals are left out, so their money isn't counted again.
+ */
+export function goalGroups(goals: Goal[], balanceOf: (accountId: string) => number, today: string): GoalGroup[] {
+  const open = goals.filter((g) => !g.deleted && !g.done);
+  const groups: GoalGroup[] = [];
+  const byAccount = new Map<string, Goal[]>();
+  for (const g of open) {
+    if (!g.accountId) {
+      const progress = goalProgress(g, undefined, today);
+      groups.push({ goals: [{ goal: g, progress }], target: g.target, saved: progress.saved, pct: progress.pct });
+    } else byAccount.set(g.accountId, [...(byAccount.get(g.accountId) ?? []), g]);
+  }
+  for (const [accountId, list] of byAccount) {
+    const balance = balanceOf(accountId);
+    const target = list.reduce((s, g) => s + g.target, 0);
+    const ordered = [...list].sort((a, b) => (a.by ?? '9999-99').localeCompare(b.by ?? '9999-99') || a.createdAt.localeCompare(b.createdAt));
+    let left = Math.max(0, balance);
+    const items = ordered.map((g, i) => {
+      // The last goal also gets anything beyond the targets, so the shares add up to the balance.
+      const share = i === ordered.length - 1 ? left : Math.min(left, g.target);
+      left -= share;
+      return { goal: g, progress: goalProgress({ ...g, accountId: undefined, saved: share }, undefined, today) };
+    });
+    groups.push({ accountId, goals: items, target, saved: balance, pct: target > 0 ? Math.min(100, Math.max(0, (balance / target) * 100)) : 0 });
+  }
+  return groups;
+}

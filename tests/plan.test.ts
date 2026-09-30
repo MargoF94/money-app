@@ -74,3 +74,21 @@ describe('goals', () => {
     expect(goalProgress({ ...g, accountId: 'sav', by: undefined }, 150000, '2026-09-30')).toEqual({ saved: 150000, pct: 50 });
   });
 });
+
+describe('goals sharing an account', () => {
+  const g = (id: string, target: number, extra = {}) => ({ id, createdAt: id, updatedAt: '', name: id, target, accountId: 'mufg', ...extra });
+  it('compare the balance with the targets added up, and share it earliest date first', async () => {
+    const { goalGroups } = await import('../src/lib/plan');
+    const groups = goalGroups(
+      [g('trip', 300000, { by: '2027-02' }), g('tattoo', 60000, { by: '2026-12' }), g('fund', 500000), g('old', 1, { done: true }), { ...g('cash', 100000), accountId: undefined, saved: 20000 }],
+      () => 400000,
+      '2026-09-30',
+    );
+    expect(groups).toHaveLength(2);
+    const mufg = groups.find((x) => x.accountId === 'mufg')!;
+    expect([mufg.saved, mufg.target, Math.round(mufg.pct)]).toEqual([400000, 860000, 47]);
+    expect(mufg.goals.map((x) => [x.goal.id, x.progress.saved])).toEqual([['tattoo', 60000], ['trip', 300000], ['fund', 40000]]);
+    const own = groups.find((x) => !x.accountId)!;
+    expect([own.saved, own.target]).toEqual([20000, 100000]);
+  });
+});
