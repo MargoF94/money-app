@@ -4,7 +4,8 @@
   import { totals } from '../lib/ledger';
   import { formatMoney } from '../lib/money';
   import { store } from '../lib/store.svelte';
-  import { formatMonth, today } from '../lib/util';
+  import { dueDates } from '../lib/bills';
+  import { addDays, formatDate, formatMonth, today } from '../lib/util';
 
   const month = today().slice(0, 7);
   const lastDay = new Date(+month.slice(0, 4), +month.slice(5, 7), 0).getDate();
@@ -26,6 +27,13 @@
     for (const a of store.accounts) if (!a.closed) t[a.currency] += store.balance(a.id);
     return t;
   });
+  // Subscriptions and bills in the next two weeks.
+  const coming = $derived(
+    store.bills
+      .flatMap((b) => dueDates(b, today(), addDays(today(), 14)).map((date) => ({ b, date })))
+      .sort((x, y) => x.date.localeCompare(y.date))
+      .slice(0, 6),
+  );
   const cards = $derived(store.accounts.filter((a) => a.type === 'card' && !a.closed));
 </script>
 
@@ -62,6 +70,20 @@
       {/if}
       <p class="xs muted">Budgets and the pace line come in the next stage.</p>
     </section>
+
+    {#if coming.length}
+      <section class="stack">
+        <div class="sec-head"><h2>Coming up</h2><a class="link" href="#/plan">Plan<Icon name="fwd" size={16} /></a></div>
+        <div class="card flush">
+          {#each coming as { b, date } (b.id + date)}
+            <a class="due row between plain" href="#/bill/{b.id}">
+              <span class="col"><span>{b.name}</span><span class="xs muted">{date === today() ? 'Today' : formatDate(date)} · {store.account(b.accountId)?.name ?? '?'}</span></span>
+              <span class="amt">{formatMoney(b.amount, store.account(b.accountId)?.currency ?? 'JPY')}</span>
+            </a>
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     <section class="stack">
       <div class="sec-head"><h2>Recent</h2><a class="link" href="#/activity">All activity<Icon name="fwd" size={16} /></a></div>
@@ -111,6 +133,15 @@
 
   .money {
     gap: 8px;
+  }
+
+  .due {
+    padding: 10px 0;
+    flex-wrap: nowrap;
+  }
+
+  .due + .due {
+    border-top: 1px solid var(--border);
   }
 
   .plain {

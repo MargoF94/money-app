@@ -78,6 +78,9 @@ export interface Transaction extends BaseRecord {
   note?: string;
   tagIds?: string[];
   foreign?: ForeignAmount;
+  /** Added automatically for a subscription or bill: which one, and for which due date. */
+  billId?: string;
+  billDate?: string;
 }
 
 export type CategoryKind = 'expense' | 'income';
@@ -94,6 +97,29 @@ export interface Tag extends BaseRecord {
   name: string;
 }
 
+export type BillRepeat = 'monthly' | 'yearly';
+
+/**
+ * A subscription or regular bill. On each due date the app adds the payment as a
+ * transaction by itself (id `bill:<bill id>:<date>`, so two devices add the same one).
+ */
+export interface Bill extends BaseRecord {
+  name: string;
+  amount: number; // smallest unit of the account's currency
+  accountId: string;
+  categoryId?: string;
+  repeat: BillRepeat;
+  /** Every N months (monthly bills only; 2 = every other month). */
+  every?: number;
+  /** First payment date; later ones fall on the same day of the month (or the last day, for 29–31). */
+  start: string; // YYYY-MM-DD
+  /** Last payment date (e.g. the end of an instalment plan); undefined = until stopped. */
+  end?: string;
+  /** false = only shown in Coming up, never added by itself. */
+  auto: boolean;
+  note?: string;
+}
+
 export type Theme = 'system' | 'light' | 'dark';
 
 export interface Settings extends BaseRecord {
@@ -108,6 +134,7 @@ export interface MainCollections {
   categories: Category[];
   tags: Tag[];
   settings: Settings[];
+  bills: Bill[];
 }
 
 export interface Collections extends MainCollections {
@@ -116,9 +143,9 @@ export interface Collections extends MainCollections {
 
 export type CollectionName = keyof Collections;
 
-export const MAIN_COLLECTIONS: (keyof MainCollections)[] = ['accounts', 'categories', 'tags', 'settings'];
+export const MAIN_COLLECTIONS: (keyof MainCollections)[] = ['accounts', 'categories', 'tags', 'settings', 'bills'];
 export const COLLECTION_NAMES: CollectionName[] = [...MAIN_COLLECTIONS, 'transactions'];
 
-/** Bumped when a collection is added, so older app versions refuse newer data instead of dropping it. */
-export const SCHEMA = 1;
+/** Bumped when a collection is added, so older app versions refuse newer data instead of dropping it. 2 added `bills`. */
+export const SCHEMA = 2;
 export const APP_ID = 'money-log';

@@ -10,7 +10,9 @@
   import AccountPage from './pages/AccountPage.svelte';
   import Accounts from './pages/Accounts.svelte';
   import Activity from './pages/Activity.svelte';
+  import BillForm from './pages/BillForm.svelte';
   import ComingSoon from './pages/ComingSoon.svelte';
+  import Plan from './pages/Plan.svelte';
   import Home from './pages/Home.svelte';
   import Settings from './pages/Settings.svelte';
   import TxForm from './pages/TxForm.svelte';
@@ -20,7 +22,12 @@
   onMount(async () => {
     try {
       await store.load();
+      await store.addDuePayments();
       await sync.init();
+      // The app may stay open for days on a phone: check again whenever it comes back.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void store.addDuePayments();
+      });
     } catch (e) {
       loadError = e instanceof Error ? e.message : String(e);
     }
@@ -38,7 +45,7 @@
     { href: '#/activity', icon: 'list', label: 'Activity', match: (s: string[]) => s[0] === 'activity' || s[0] === 'tx' },
     { href: '#/add', icon: 'plus', label: 'Add', match: (s: string[]) => s[0] === 'add' },
     { href: '#/accounts', icon: 'wallet', label: 'Accounts', match: (s: string[]) => s[0] === 'accounts' || s[0] === 'account' },
-    { href: '#/plan', icon: 'calendar', label: 'Plan', match: (s: string[]) => s[0] === 'plan' },
+    { href: '#/plan', icon: 'calendar', label: 'Plan', match: (s: string[]) => s[0] === 'plan' || s[0] === 'bill' },
     { href: '#/stats', icon: 'chart', label: 'Stats', match: (s: string[]) => s[0] === 'stats' },
   ];
   // Phones show Settings as a gear in the top bar; the sidebar lists it.
@@ -96,7 +103,11 @@
     {:else if seg[0] === 'account' && seg[1]}
       {#key seg[1]}<AccountPage id={seg[1]} />{/key}
     {:else if seg[0] === 'plan'}
-      <ComingSoon title="Plan" text="Budgets, your payday month, bills, Rakuten Card instalments and goals come in the next stage." />
+      <Plan />
+    {:else if seg[0] === 'bill' && seg[1] === 'new'}
+      <BillForm />
+    {:else if seg[0] === 'bill' && seg[1]}
+      {#key seg[1]}<BillForm id={seg[1]} />{/key}
     {:else if seg[0] === 'stats'}
       <ComingSoon title="Stats" text="Charts of your spending come in stage 3." />
     {:else if seg[0] === 'settings'}

@@ -130,6 +130,8 @@ class Sync {
           throw e;
         }
       }
+      // Payments due while the app was closed, now that this device has every bill.
+      await store.addDuePayments();
       this.lastSyncedAt = nowIso();
       await setMeta(LAST_KEY, this.lastSyncedAt);
       this.error = null;

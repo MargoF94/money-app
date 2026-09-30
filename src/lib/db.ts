@@ -15,7 +15,9 @@ class MoneyDb extends Dexie {
     super('money-log');
     const schema: Record<string, string> = { meta: 'key' };
     for (const name of COLLECTION_NAMES) schema[name] = 'id';
-    this.version(1).stores(schema);
+    const { bills: _bills, ...v1 } = schema;
+    this.version(1).stores(v1);
+    this.version(2).stores(schema); // + bills
   }
 
   coll(name: CollectionName): Table<BaseRecord, string> {

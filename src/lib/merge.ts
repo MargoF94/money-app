@@ -13,7 +13,7 @@ export function isDataPath(path: string): boolean {
 }
 
 export function emptyCollections(): Collections {
-  return { accounts: [], categories: [], tags: [], settings: [], transactions: [] };
+  return { accounts: [], categories: [], tags: [], settings: [], bills: [], transactions: [] };
 }
 
 const byId = (x: BaseRecord, y: BaseRecord) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
