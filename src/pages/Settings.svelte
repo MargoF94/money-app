@@ -2,6 +2,7 @@
   import Icon from '../components/Icon.svelte';
   import { CATEGORY_ICONS } from '../lib/constants';
   import { checkRepo } from '../lib/github';
+  import { downloadCsv, transactionsCsv } from '../lib/csv';
   import { parseFile, toBackup } from '../lib/merge';
   import { store } from '../lib/store.svelte';
   import { sync } from '../lib/sync.svelte';
@@ -196,6 +197,9 @@
     <div class="row">
       <button type="button" class="btn" onclick={download}><Icon name="download" size={18} />Download backup</button>
       <button type="button" class="btn" onclick={() => fileInput?.click()}><Icon name="upload" size={18} />Load a backup…</button>
+      <button type="button" class="btn" onclick={() => downloadCsv(transactionsCsv([...store.transactions].reverse(), store), `money-log-transactions-${today()}.csv`)}>
+        <Icon name="download" size={18} />All transactions (CSV)
+      </button>
       <input bind:this={fileInput} type="file" accept="application/json,.json" hidden onchange={restore} />
     </div>
   </section>

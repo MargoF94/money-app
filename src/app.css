@@ -20,6 +20,14 @@
   --danger-soft: #f1e1df;
   --series-1: #35679f;
   --series-2: #a8653a;
+  /* category colours: validated all-pairs (any order) in both themes; Other is grey */
+  --cat-1: #2979c9;
+  --cat-2: #954a1e;
+  --cat-3: #02995a;
+  --cat-4: #aa4b8a;
+  --cat-5: #5b3d87;
+  --cat-other: #868c92;
+  --wash-1: rgb(53 103 159 / 0.1);
   --chart-grid: #e1e3e4;
   --chart-axis: #c3c7ca;
   --chart-ink-muted: #656d74;
@@ -53,6 +61,13 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 2px 8px rgb(0 0 0 / 0.35);
     --series-1: #5f8fcb;
     --series-2: #c27c48;
+    --cat-1: #156ab9;
+    --cat-2: #ad4c02;
+    --cat-3: #2aaa6a;
+    --cat-4: #a34584;
+    --cat-5: #9d67e9;
+    --cat-other: #7a8289;
+    --wash-1: rgb(95 143 203 / 0.12);
     --chart-grid: #262a2e;
     --chart-axis: #3a4046;
     --chart-ink-muted: #838c94;
@@ -79,6 +94,13 @@
   --shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 2px 8px rgb(0 0 0 / 0.35);
   --series-1: #5f8fcb;
   --series-2: #c27c48;
+  --cat-1: #156ab9;
+  --cat-2: #ad4c02;
+  --cat-3: #2aaa6a;
+  --cat-4: #a34584;
+  --cat-5: #9d67e9;
+  --cat-other: #7a8289;
+  --wash-1: rgb(95 143 203 / 0.12);
   --chart-grid: #262a2e;
   --chart-axis: #3a4046;
   --chart-ink-muted: #838c94;

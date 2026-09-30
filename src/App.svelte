@@ -11,10 +11,10 @@
   import Accounts from './pages/Accounts.svelte';
   import Activity from './pages/Activity.svelte';
   import BillForm from './pages/BillForm.svelte';
-  import ComingSoon from './pages/ComingSoon.svelte';
   import Plan from './pages/Plan.svelte';
   import Home from './pages/Home.svelte';
   import Settings from './pages/Settings.svelte';
+  import Stats from './pages/Stats.svelte';
   import TxForm from './pages/TxForm.svelte';
 
   let loadError = $state('');
@@ -109,7 +109,7 @@
     {:else if seg[0] === 'bill' && seg[1]}
       {#key seg[1]}<BillForm id={seg[1]} />{/key}
     {:else if seg[0] === 'stats'}
-      <ComingSoon title="Stats" text="Charts of your spending come in stage 3." />
+      <Stats />
     {:else if seg[0] === 'settings'}
       <Settings />
     {:else}
