@@ -4,7 +4,7 @@ A personal, single-user money app: accounts, spending, budgets, bills and saving
 dollars. Built like Reading Log (`MargoF94/reading-app`) and hosted on GitHub Pages.
 Interface in English; weeks start on Monday.
 
-Status: **planning — waiting for your answers (section 14) before building.**
+Status: **planning — first answers received (section 14); a few questions left before building.**
 Mockups (private link): https://claude.ai/artifact/MehUA9LXFQ5fHg4F5HenEZ
 
 ---
@@ -19,11 +19,11 @@ Mockups (private link): https://claude.ai/artifact/MehUA9LXFQ5fHg4F5HenEZ
 | Data | Stored on each device, synced to a **private** repo `money-data` with a fine-grained token |
 | Data files | `money.json` plus **one file per month of transactions** — the one deliberate change from Reading Log (reason in section 2) |
 | Amounts | Whole numbers in the smallest unit: yen, and cents for dollars. No rounding errors. |
-| Currencies | JPY and USD. Every account has one currency. More can be added later. |
-| Totals | In a display currency (yen by default); each transaction is converted at its own day's rate |
+| Currencies | Yen for everything. Occasional dollar purchases (Apple Pay) are recorded with both the dollar price and the yen the card charges. Dollar accounts can be added later if needed. |
+| Totals | In yen |
 | Exchange rates | Frankfurter (European Central Bank), jsDelivr fallback — Reading Log's `fx.ts`. Saved on each transaction, editable. |
 | Reminders | `.ics` calendar files with alarms (work when the app is closed), plus notices in the app |
-| Import | CSV statements from banks and cards: Shift_JIS or UTF-8, columns remembered per account |
+| Input | **Manual entry**, optionally filled in from a **receipt photo**. The only import is the **Rakuten Card 明細 CSV**, used to track 分割払い and the monthly withdrawals — no bank history. |
 | Layout | Phone first. Six tabs: **Home · Activity · Add · Accounts · Plan · Stats**; Settings is the ⚙ in the top bar; sidebar on screens ≥ 900 px |
 | Look | Reading Log's ink/slate palette and its own dark mode; chart colours checked for colour-blindness in both themes |
 | Privacy | Private data repo; token limited to that repo; token kept only on the device; warning if the repo is public; bank files are never committed anywhere |
@@ -110,13 +110,21 @@ Interest & dividends, Gifts, Other income.
   difference — as spending in a category (e.g. Suica → Transport) or as a correction that doesn't
   count as spending (e.g. investment values).
 - Refunds count as money back in their category.
+- **Prepaid cards and apps (PASMO, Starbucks, PayPay…) are accounts** with their own balance and
+  spending. A top-up is entered once on the prepaid account and automatically becomes a charge on
+  the card that paid for it (Rakuten Card by default, changeable per account). The top-up itself is
+  not spending; what you then buy with PASMO or Starbucks is.
+- **Receipt photo:** take or choose a photo; the app reads shop, date, total and (if you want)
+  the lines, and fills in the form for you to check before saving. How it reads the photo is
+  question 8.
 
 ## 6. Currencies
 
-- Balances are always shown in the account's own currency.
-- Totals, budgets and stats use the display currency: each dollar transaction at its own day's rate.
-- Net worth uses the latest rate (looked up once a day, kept for offline use).
-- Rates missing because a transaction was saved offline are filled in later automatically.
+- Everything is in yen.
+- A dollar purchase with Apple Pay on a yen card: you type the dollar price; the app estimates the
+  yen at that day's rate (plus the card's foreign-transaction fee, set in the card's settings) and marks
+  it **estimated**. When the Rakuten 明細 is imported, the real yen amount replaces the estimate.
+- Exchange rates: Frankfurter (European Central Bank), jsDelivr fallback — Reading Log's `fx.ts`.
 
 ## 7. Budgets
 
@@ -130,8 +138,13 @@ Interest & dividends, Gifts, Other income.
 - Repeats: every month on a day (or the last day), every N months (water every 2 months), yearly,
   every N weeks; start and end dates; amount fixed or "about".
 - Due dates on a weekend move to the next business day (Japanese public holidays later, phase 4).
-- **Card payments appear automatically** from the card's closing and payment days, with the amount
-  added up from the statement period (replaced by the real amount when you import the statement).
+- **Card payments appear automatically** from the card's closing and payment days. For Rakuten Card:
+  purchases from the 1st to the last day of a month are withdrawn on the 27th of the next month
+  (next business day if that's a weekend or holiday).
+- **分割払い (instalments):** a purchase paid in N instalments is spread over the months it is
+  actually withdrawn, with its 分割手数料 (fee) shown separately. The card page and Plan show, month by
+  month, how much will be withdrawn and which instalments make it up, and when each plan ends.
+  One-time payments, 分割 and (if ever used) リボ are kept apart.
 - Paydays and other regular income on the calendar too.
 - **Mark paid** creates the transaction, pre-filled; the amount can be changed.
 - Optional "add automatically on the due date" for fixed subscriptions (safe with two devices).
@@ -165,16 +178,15 @@ Interest & dividends, Gifts, Other income.
 
 ## 11. Import and export
 
-- **CSV import:** detects UTF-8 or Shift_JIS; understands Japanese headers, dates such as
-  `2026/09/30`, `2026年9月30日` and `R8.9.30`, amounts with `¥`, commas, full-width digits and minus
-  signs, and separate withdrawal/deposit columns. Half-width katakana is normalised (`ﾛｰｿﾝ` → `ローソン`)
-  before rules are matched.
-- Preview before importing: duplicates (same account and amount, date within a few days) are
-  unticked; categories come from your rules and your history; the column mapping is remembered per account.
-- Ready-made settings for your banks and cards once I know which ones (question 1).
-- Bank files stay on the device; only the imported transactions are synced. Real files used for testing
-  are never committed (`.gitignore` blocks `*.csv`, `*.pdf` and `tests/_local*`).
-- Export: JSON backup, CSV of transactions (spreadsheets, tax), `.ics` of bills.
+- **Rakuten Card 明細 CSV only.** Detects Shift_JIS or UTF-8; reads the date, shop, amount, payment
+  method (1回 / 分割 / リボ), fee and the amount charged this month, so the instalment schedule and the
+  next withdrawals are exact. Rows you already entered by hand are matched (same amount, date within a
+  few days) instead of added twice; dollar purchases get their real yen amount. The exact columns will
+  be checked against your own export (kept only on this computer, never committed).
+- No bank (三井住友 / MUFG) history import: those accounts are kept up to date by hand and with
+  "Check a balance".
+- Export: JSON backup, CSV of transactions, `.ics` of bills.
+- Half-width katakana in the 明細 is normalised (`ﾛｰｿﾝ` → `ローソン`) before payee rules are matched.
 
 ## 12. Not possible / limits
 
@@ -185,36 +197,44 @@ Interest & dividends, Gifts, Other income.
 | Reminders while the app is closed | Not reliable without a server → `.ics` alarms in the iPhone Calendar. |
 | Exact exchange rate of a card purchase | Only known from the statement; estimated until then. |
 | Apple Pay → automatic entry | Maybe: an iPhone Shortcut ("Transaction" automation in Wallet) can open the Add form pre-filled. But links open in Safari, not the Home Screen app, and the two keep separate data. Needs testing on your phone (phase 4). |
-| Reading receipts automatically | Not planned (large download, unreliable on Japanese receipts). Photos are kept instead. |
+| Reading receipts automatically | Possible, see question 8. Reading on the phone itself (free, private) is weak on Japanese receipts; sending the photo to an AI service (e.g. Claude, with your own API key) reads them well but costs about ¥1–3 per receipt and the photo leaves the phone. |
 | Live investment prices | Not planned; update values with "Check a balance". |
 
 ## 13. Build phases
 
-1. **Foundation:** project and deploy; storage and sync (monthly files); accounts; categories;
-   transactions (add, edit, delete, transfers, refunds, splits); Activity with search and filters;
-   account pages; Home (basic); exchange rates; JSON backup; dark mode; installable, offline.
-2. **Planning:** budgets with pace; bills and subscriptions calendar; card payments; paydays;
-   reminders (`.ics` and in-app); goals; "Check a balance".
-3. **Import and stats:** CSV import (Shift_JIS, bank presets, duplicates, rules); Stats with charts;
-   CSV export; receipt photos and statements.
-4. **Extras:** net worth history; privacy mode (hide amounts); Japanese holidays for due dates;
-   Apple Pay shortcut test; year in review; optional encryption.
+1. **Foundation:** project and deploy; storage and sync (monthly files); accounts (banks, cash,
+   Rakuten Card, PASMO, Starbucks…); categories; manual transactions (add, edit, delete, transfers,
+   refunds, splits, prepaid top-ups charged to the card, dollar purchases); Activity with search and
+   filters; account pages; Home (basic); JSON backup; dark mode; installable, offline.
+2. **Rakuten Card and planning:** 明細 CSV import; 分割払い schedule and monthly withdrawals; budgets
+   (calendar months) with pace; bills and subscriptions calendar; reminders (`.ics` and in-app); goals;
+   "Check a balance".
+3. **Receipts and stats:** receipt photos (stored and read); Stats with charts; CSV export.
+4. **Extras:** privacy mode (hide amounts); Japanese holidays for due dates; Apple Pay shortcut test;
+   year in review.
 
 Each phase: tests for every `lib/` file, `npm run check && npm test && npm run build` before each push,
 a phone-sized browser test with simulated GitHub/exchange-rate services, and a confirmed deploy.
 
-## 14. Questions for you
+## 14. Your answers, and what's still open
 
-1. Which banks, cards and payment apps do you use (yen and dollar)? Do they offer CSV downloads?
-2. Budget months: calendar months (1st to last day), or payday to payday (e.g. 25th–24th)?
-3. Do you ever pay in dollars with a yen card, or in yen with a dollar card?
-4. Suica, PASMO, PayPay: keep them as accounts (checking the balance now and then), or count each
-   top-up as spending?
-5. Encrypt the synced data with a passphrase? Safer if your GitHub account were ever broken into, but
-   you'd type it on each device, and if it's forgotten the synced copy can't be opened.
-6. Did you use another app or a spreadsheet before (Money Forward ME, Zaim, Excel…) whose history
-   you'd like to import?
-7. Are the name "Money Log", the six tabs and the default categories OK?
+Answered:
+- Banks 三井住友銀行 and MUFG: no history import; everything entered by hand or from receipt photos.
+  Rakuten Card 明細 CSV for 分割払い and the monthly withdrawals.
+- Budgets run from the 1st of each month (Rakuten charges the 1st–last day of the month).
+- Yen for everything; occasional dollar purchases with Apple Pay.
+- PASMO, Starbucks (and similar) are tracked as accounts; top-ups are charged to Rakuten Card.
+- No encryption: the private repo plus a token limited to it is enough.
+- Past history: only the Rakuten 明細.
+
+Still open:
+7. Name "Money Log", the six tabs and the default categories — OK? (Your current spreadsheet would
+   show which categories you really use.)
+8. Receipt reading: on the phone only (free, private, weaker), or through an AI service with your
+   own API key (accurate, ~¥1–3 a receipt, the photo is sent out)? Or just keep the photo and type the total?
+9. Which card is in Apple Pay for dollar purchases — Rakuten Card? Any other cards or payment apps
+   (PayPay, Suica…) besides PASMO and Starbucks?
+10. Do you have any dollar accounts or dollar cash, or is everything in yen?
 
 ## 15. Setup (when phase 1 is ready)
 
