@@ -4,7 +4,7 @@ A personal, single-user money app: accounts, spending, budgets, bills and saving
 dollars. Built like Reading Log (`MargoF94/reading-app`) and hosted on GitHub Pages.
 Interface in English; weeks start on Monday.
 
-Status: **stage 1 (foundation) built; stage 2 next.**
+Status: **stages 1 and 2 built (plus subscriptions); stage 3 (receipts, stats, CSV export) next.**
 Mockups (private link): https://claude.ai/artifact/MehUA9LXFQ5fHg4F5HenEZ
 
 ---

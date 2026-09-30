@@ -148,6 +148,22 @@ export interface Statement extends BaseRecord {
   fileName?: string;
 }
 
+/** A monthly budget for one category. Changes apply from a month on, so past months keep theirs. */
+export interface Budget extends BaseRecord {
+  categoryId: string;
+  amounts: { from: string; amount: number }[]; // from = YYYY-MM, sorted
+}
+
+/** Something to save up for. Progress is a linked account's balance, or what you record by hand. */
+export interface Goal extends BaseRecord {
+  name: string;
+  target: number; // yen
+  accountId?: string;
+  saved?: number; // when not linked to an account
+  by?: string; // YYYY-MM target month
+  done?: boolean;
+}
+
 export type Theme = 'system' | 'light' | 'dark';
 
 export interface Settings extends BaseRecord {
@@ -164,6 +180,8 @@ export interface MainCollections {
   settings: Settings[];
   bills: Bill[];
   statements: Statement[];
+  budgets: Budget[];
+  goals: Goal[];
 }
 
 export interface Collections extends MainCollections {
@@ -172,9 +190,9 @@ export interface Collections extends MainCollections {
 
 export type CollectionName = keyof Collections;
 
-export const MAIN_COLLECTIONS: (keyof MainCollections)[] = ['accounts', 'categories', 'tags', 'settings', 'bills', 'statements'];
+export const MAIN_COLLECTIONS: (keyof MainCollections)[] = ['accounts', 'categories', 'tags', 'settings', 'bills', 'statements', 'budgets', 'goals'];
 export const COLLECTION_NAMES: CollectionName[] = [...MAIN_COLLECTIONS, 'transactions'];
 
-/** Bumped when a collection is added, so older app versions refuse newer data instead of dropping it. 2 added `bills`, 3 `statements`. */
-export const SCHEMA = 3;
+/** Bumped when a collection is added, so older app versions refuse newer data instead of dropping it. 2 added `bills`, 3 `statements`, 4 `budgets` and `goals`. */
+export const SCHEMA = 4;
 export const APP_ID = 'money-log';

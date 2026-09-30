@@ -63,14 +63,14 @@
     const added = catchUp.length;
     await store.saveBill(b);
     toasts.show(added ? `Saved. Added ${plural(added, 'payment')} already due.` : 'Saved.');
-    router.go('/plan', true);
+    router.go('/plan?s=bills', true);
   }
 
   async function stop() {
     if (!existing || !confirm(`Stop ${existing.name}? Payments already added stay; no new ones will be added.`)) return;
     await store.deleteBill(existing);
     toasts.show(`${existing.name} stopped.`);
-    router.go('/plan', true);
+    router.go('/plan?s=bills', true);
   }
 </script>
 
@@ -141,7 +141,7 @@
 
   <div class="row">
     <button class="btn primary">Save</button>
-    <button type="button" class="btn" onclick={() => router.back('/plan')}>Cancel</button>
+    <button type="button" class="btn" onclick={() => router.back('/plan?s=bills')}>Cancel</button>
     {#if existing}<button type="button" class="btn danger" onclick={stop}>Stop</button>{/if}
   </div>
 </form>

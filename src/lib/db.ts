@@ -15,10 +15,11 @@ class MoneyDb extends Dexie {
     super('money-log');
     const schema: Record<string, string> = { meta: 'key' };
     for (const name of COLLECTION_NAMES) schema[name] = 'id';
-    const { bills: _bills, statements: _statements, ...v1 } = schema;
+    const { bills: _bills, statements: _statements, budgets: _budgets, goals: _goals, ...v1 } = schema;
     this.version(1).stores(v1);
     this.version(2).stores({ ...v1, bills: 'id' }); // + bills
-    this.version(3).stores(schema); // + statements
+    this.version(3).stores({ ...v1, bills: 'id', statements: 'id' }); // + statements
+    this.version(4).stores(schema); // + budgets, goals
   }
 
   coll(name: CollectionName): Table<BaseRecord, string> {

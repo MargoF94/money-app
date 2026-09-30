@@ -7,7 +7,7 @@ import { dueWithdrawals } from './card';
 import { balances } from './ledger';
 import { emptyCollections, mergeCollections } from './merge';
 import { COLLECTION_NAMES } from './types';
-import type { Account, BaseRecord, Bill, Category, CollectionName, Collections, Settings, Statement, Transaction } from './types';
+import type { Account, BaseRecord, Bill, Budget, Category, CollectionName, Collections, Goal, Settings, Statement, Transaction } from './types';
 import { collator, nowIso, today } from './util';
 
 type Listener = () => void;
@@ -42,6 +42,9 @@ class Store {
 
   /** Card statements, oldest first. */
   statements = $derived(this.data.statements.filter((x) => !x.deleted).sort((a, b) => a.billMonth.localeCompare(b.billMonth)));
+
+  budgets = $derived(this.data.budgets.filter((b) => !b.deleted));
+  goals = $derived(this.data.goals.filter((g) => !g.deleted).sort((a, b) => Number(!!a.done) - Number(!!b.done) || collator.compare(a.name, b.name)));
 
   settings = $derived<Settings>(this.data.settings.find((s) => s.id === 'settings' && !s.deleted) ?? defaultSettings(SEED_TIME));
 
@@ -258,6 +261,18 @@ class Store {
 
   async deleteStatement(st: Statement): Promise<void> {
     await this.remove('statements', [st]);
+  }
+
+  async saveBudgets(budgets: Budget[]): Promise<void> {
+    await this.put('budgets', budgets);
+  }
+
+  async saveGoal(g: Goal): Promise<void> {
+    await this.put('goals', [g]);
+  }
+
+  async deleteGoal(g: Goal): Promise<void> {
+    await this.remove('goals', [g]);
   }
 
   async saveSettings(patch: Partial<Settings>): Promise<void> {

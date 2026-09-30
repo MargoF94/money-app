@@ -1,120 +1,69 @@
 <script lang="ts">
+  import BillsList from '../components/BillsList.svelte';
+  import BudgetPlan from '../components/BudgetPlan.svelte';
+  import GoalsList from '../components/GoalsList.svelte';
   import Icon from '../components/Icon.svelte';
-  import { monthlyCost, nextDue, repeatLabel } from '../lib/bills';
-  import { formatMoney } from '../lib/money';
-  import { store } from '../lib/store.svelte';
-  import { formatDate, today } from '../lib/util';
+  import MonthPlan from '../components/MonthPlan.svelte';
+  import { router } from '../lib/router.svelte';
+  import { addMonths, formatMonth, today } from '../lib/util';
 
-  const now = today();
-  const rows = $derived(
-    store.bills
-      .map((b) => ({ b, next: nextDue(b, now), account: store.account(b.accountId) }))
-      .sort((x, y) => (x.next ?? '9999').localeCompare(y.next ?? '9999')),
-  );
-  // Totals in yen (dollar accounts are listed but not added up).
-  const yen = $derived(rows.filter((r) => r.account?.currency !== 'USD' && r.next));
-  const perMonth = $derived(Math.round(yen.reduce((s, r) => s + monthlyCost(r.b), 0)));
+  // Sections and the month live in the URL (?s=budget&m=2026-10) so Back keeps them.
+  const SECTIONS = [
+    { id: 'month', label: 'Month' },
+    { id: 'budget', label: 'Budget' },
+    { id: 'bills', label: 'Bills' },
+    { id: 'goals', label: 'Goals' },
+  ];
+  const q = $derived(router.route.query);
+  const section = $derived(SECTIONS.some((s) => s.id === q.get('s')) ? q.get('s')! : 'month');
+  const month = $derived(/^\d{4}-\d{2}$/.test(q.get('m') ?? '') ? q.get('m')! : today().slice(0, 7));
 </script>
 
 <h1>Plan</h1>
-<p class="small muted intro">Budgets, your payday month, Rakuten Card instalments and goals come in the next stage.</p>
 
-<div class="sec-head"><h2>Subscriptions &amp; bills</h2><a class="btn small" href="#/bill/new"><Icon name="plus" size={16} />Add</a></div>
+<div class="seg" role="group" aria-label="Plan sections">
+  {#each SECTIONS as s (s.id)}
+    <button type="button" class:on={section === s.id} aria-pressed={section === s.id} onclick={() => router.setQuery({ s: s.id === 'month' ? undefined : s.id })}>{s.label}</button>
+  {/each}
+</div>
 
-{#if rows.length === 0}
-  <div class="card empty">
-    <p>Add Netflix, iCloud+, your phone, rent, Paidy… Each payment is added on its day by itself, to the account or card it's paid with.</p>
-    <a class="btn primary" href="#/bill/new">Add a subscription or bill</a>
+{#if section === 'month' || section === 'budget'}
+  <div class="row between months">
+    <button type="button" class="btn ghost icon" aria-label="Previous month" onclick={() => router.setQuery({ m: addMonths(month, -1) })}><Icon name="back" /></button>
+    <h2>{formatMonth(month)}</h2>
+    <button type="button" class="btn ghost icon" aria-label="Next month" onclick={() => router.setQuery({ m: addMonths(month, 1) })}><Icon name="fwd" /></button>
   </div>
-{:else}
-  <section class="card totals">
-    <div><span class="muted small">A month</span><span class="big num">{formatMoney(perMonth, 'JPY')}</span></div>
-    <div><span class="muted small">A year</span><span class="big num">{formatMoney(perMonth * 12, 'JPY')}</span></div>
-  </section>
-
-  <div class="card flush">
-    {#each rows as { b, next, account } (b.id)}
-      <a class="bill" href="#/bill/{b.id}">
-        <span class="date-block">
-          {#if next}<span class="d">{+next.slice(8, 10)}</span><span class="w">{formatDate(next).slice(0, 3)}</span>
-          {:else}<span class="w">ended</span>{/if}
-        </span>
-        <span class="grow col">
-          <span class="name">{b.name}</span>
-          <span class="xs muted">{repeatLabel(b)} · {account?.name ?? '?'}{b.auto ? '' : ' · reminder only'}</span>
-          {#if next}<span class="xs muted">Next: {formatDate(next)}{b.end ? ` · last ${formatDate(b.end)}` : ''}</span>{/if}
-        </span>
-        <span class="amt">{formatMoney(b.amount, account?.currency ?? 'JPY')}</span>
-      </a>
-    {/each}
-  </div>
-  <p class="xs muted">Payments are added on their day to the account or card they're paid with. Tap one to change or stop it.</p>
 {/if}
 
+<div class="body">
+  {#if section === 'month'}
+    {#key month}<MonthPlan {month} />{/key}
+  {:else if section === 'budget'}
+    {#key month}<BudgetPlan {month} />{/key}
+  {:else if section === 'bills'}
+    <BillsList />
+  {:else}
+    <GoalsList />
+  {/if}
+</div>
+
 <style>
-  .intro {
-    margin: -0.25rem 0 1.25rem;
+  .seg {
+    margin: 0.5rem 0 0.75rem;
+    max-width: 560px;
   }
 
-  .sec-head {
-    margin-bottom: 0.75rem;
+  .months {
+    flex-wrap: nowrap;
+    max-width: 560px;
   }
 
-  .totals {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+  .months h2 {
+    margin: 0;
   }
 
-  .totals div {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .bill {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    color: var(--text);
-    text-decoration: none;
-  }
-
-  .bill + .bill {
-    border-top: 1px solid var(--border);
-  }
-
-  .col {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .name {
-    font-weight: 500;
-  }
-
-  .date-block {
-    width: 44px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 1.1;
-    padding: 5px 0;
-    border-radius: 8px;
-    background: var(--surface-2);
-  }
-
-  .d {
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  .w {
-    font-size: 0.7rem;
-    color: var(--text-2);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  .body {
+    max-width: 760px;
+    margin-top: 0.5rem;
   }
 </style>
